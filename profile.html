@@ -409,13 +409,13 @@
         }
         
         // Загрузка ВСЕХ уникальных диалогов (с правильным определением роли по ПЕРВОМУ сообщению)
-        async function loadAllDialogsFromSupabase() {
+                async function loadAllDialogsFromSupabase() {
             // Получаем все сообщения, где участвует пользователь
             const { data: messages, error } = await supabase
                 .from('messages')
                 .select('*')
                 .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-                .order('created_at', { ascending: true }); // Сортируем по возрастанию, чтобы первое сообщение было первым
+                .order('created_at', { ascending: true });
             
             if (error) {
                 console.error('Ошибка загрузки сообщений:', error);
@@ -424,11 +424,12 @@
             
             if (!messages || messages.length === 0) return [];
             
+            // Группируем по offer_id (а не по user_id!)
             const dialogsMap = new Map();
             
             for (const msg of messages) {
-                const otherUserId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
-                const key = `${otherUserId}_${msg.offer_id || 'no_offer'}`;
+                // КЛЮЧ = offer_id (если нет offer_id, то отдельный ключ)
+                const key = msg.offer_id ? `offer_${msg.offer_id}` : `chat_${msg.sender_id}_${msg.receiver_id}`;
                 
                 if (!dialogsMap.has(key)) {
                     let offerName = 'Товар';
@@ -448,34 +449,32 @@
                         } catch (err) {}
                     }
                     
+                    // Определяем собеседника
+                    const otherUserId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
                     const otherUserName = await getUserNameById(otherUserId);
                     
-                    // Находим ПЕРВОЕ сообщение в этом диалоге (по offer_id и участникам)
-                    const { data: firstMessage } = await supabase
+                    // Определяем роль по первому сообщению в этом offer_id
+                    const { data: firstMsg } = await supabase
                         .from('messages')
                         .select('sender_id')
                         .eq('offer_id', msg.offer_id || 0)
-                        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
                         .order('created_at', { ascending: true })
                         .limit(1)
                         .maybeSingle();
                     
-                    // Определяем роль по первому сообщению (это важно!)
                     let isBuyer = false;
                     let isSeller = false;
                     
-                    if (firstMessage) {
-                        // Если первое сообщение отправил Я → Я покупатель
-                        if (firstMessage.sender_id === user.id) {
+                    if (firstMsg) {
+                        // Если первое сообщение отправил Я → я покупатель
+                        if (firstMsg.sender_id === user.id) {
                             isBuyer = true;
                             isSeller = false;
                         } else {
-                            // Если первое сообщение отправил другой → Я продавец
                             isBuyer = false;
                             isSeller = true;
                         }
                     } else {
-                        // Запасной вариант: по текущему сообщению
                         isBuyer = (msg.sender_id === user.id);
                         isSeller = !isBuyer;
                     }
@@ -492,7 +491,7 @@
                         isSeller: isSeller
                     });
                 } else {
-                    // Обновляем последнее сообщение в существующем диалоге
+                    // Обновляем последнее сообщение
                     const existing = dialogsMap.get(key);
                     if (new Date(msg.created_at) > new Date(existing.last_message_time)) {
                         existing.last_message = msg.message;
@@ -673,4 +672,3 @@
     </script>
 </body>
 </html>
-ффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффф
