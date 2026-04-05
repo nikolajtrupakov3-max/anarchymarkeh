@@ -159,34 +159,49 @@
         }
 
                 // Получаем нормальное имя собеседника (с проверкой profiles)
+                // Получаем нормальное имя собеседника (с проверкой profiles)
         let displayName = receiverName;
         
         if (receiverId) {
-            // 1. Сначала пробуем из auth.users
-            const { data: userData } = await supabase
-                .from('auth.users')
-                .select('raw_user_meta_data, email')
+            console.log('🔍 Поиск имени для ID:', receiverId);
+            
+            // 1. Сначала пробуем из profiles
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('username')
                 .eq('id', receiverId)
                 .maybeSingle();
             
-            if (userData) {
-                // 2. Пробуем взять ник из raw_user_meta_data
-                displayName = userData.raw_user_meta_data?.username;
+            if (profileData?.username) {
+                displayName = profileData.username;
+                console.log('✅ Найден ник в profiles:', displayName);
+            }
+            
+            // 2. Если нет — пробуем из auth.users
+            if (!displayName) {
+                const { data: userData } = await supabase
+                    .from('auth.users')
+                    .select('raw_user_meta_data, email')
+                    .eq('id', receiverId)
+                    .maybeSingle();
                 
-                // 3. Если нет — пробуем из таблицы profiles
-                if (!displayName) {
-                    const { data: profileData } = await supabase
-                        .from('profiles')
-                        .select('username')
-                        .eq('id', receiverId)
-                        .maybeSingle();
-                    displayName = profileData?.username;
+                if (userData) {
+                    displayName = userData.raw_user_meta_data?.username;
+                    if (displayName) {
+                        console.log('✅ Найден ник в auth.users:', displayName);
+                    } else {
+                        displayName = userData.email?.split('@')[0];
+                        if (displayName) {
+                            console.log('📧 Используем email:', displayName);
+                        }
+                    }
                 }
-                
-                // 4. Если всё равно нет — показываем email
-                if (!displayName) {
-                    displayName = userData.email;
-                }
+            }
+            
+            // 3. Всё пропало — показываем ID
+            if (!displayName) {
+                displayName = receiverId.substring(0, 8);
+                console.log('❌ Используем ID:', displayName);
             }
         }
         
@@ -355,3 +370,4 @@
     </script>
 </body>
 </html>
+let displayName = receiverName;

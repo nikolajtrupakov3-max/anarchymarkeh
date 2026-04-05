@@ -386,28 +386,25 @@
         
         await loadUserStats();
         
-        // Функция для получения ника пользователя по ID
-        async function getUserNameById(userId) {
-            const { data: profileData } = await supabase
+                       async function getUserNameById(userId) {
+            if (!userId) return 'Неизвестный';
+            
+            console.log('🔍 Поиск ника для ID:', userId);
+            
+            // ТОЛЬКО ИЗ ТАБЛИЦЫ profiles (auth.users недоступен)
+            const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('username')
                 .eq('id', userId)
                 .maybeSingle();
             
-            if (profileData?.username) {
+            if (!profileError && profileData?.username) {
+                console.log('✅ Найден ник в profiles:', profileData.username);
                 return profileData.username;
             }
             
-            const { data: authData } = await supabase
-                .from('auth.users')
-                .select('raw_user_meta_data')
-                .eq('id', userId)
-                .maybeSingle();
-            
-            if (authData?.raw_user_meta_data?.username) {
-                return authData.raw_user_meta_data.username;
-            }
-            
+            // Если в profiles нет — показываем обрезанный ID
+            console.log('❌ Ник не найден в profiles, показываем ID:', userId.substring(0, 8));
             return userId.substring(0, 8);
         }
         
@@ -676,3 +673,4 @@
     </script>
 </body>
 </html>
+ффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффффф
