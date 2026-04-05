@@ -215,12 +215,18 @@
 
         let messagesListener = null;
 
-        async function loadMessages() {
-            const { data, error } = await supabase
+                async function loadMessages() {
+            let query = supabase
                 .from('messages')
                 .select('*')
-                .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
-                .order('created_at', { ascending: true });
+                .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`);
+            
+            // ДОБАВЛЯЕМ ФИЛЬТР ПО offer_id (разные чаты для разных товаров!)
+            if (offerId) {
+                query = query.eq('offer_id', offerId);
+            }
+            
+            const { data, error } = await query.order('created_at', { ascending: true });
             
             if (error) {
                 console.error('Ошибка загрузки:', error);
@@ -264,13 +270,25 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        async function sendMessage() {
+               async function sendMessage() {
+            console.log('🔴 sendMessage ВЫЗВАНА!');
+            
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             
-            if (!message) return;
+            console.log('message:', message);
             
-            const { error } = await supabase
+            if (!message) {
+                console.log('❌ Сообщение пустое');
+                return;
+            }
+            
+            console.log('📤 Отправка...');
+            console.log('offerId:', offerId);
+            console.log('receiverId:', receiverId);
+            console.log('user.id:', user.id);
+            
+            const { data, error } = await supabase
                 .from('messages')
                 .insert([{
                     sender_id: user.id,
@@ -281,8 +299,10 @@
                 }]);
             
             if (error) {
+                console.error('❌ Ошибка отправки:', error);
                 alert('Ошибка отправки: ' + error.message);
             } else {
+                console.log('✅ Сообщение отправлено! Данные:', data);
                 input.value = '';
                 await refreshMessages();
             }
@@ -370,4 +390,4 @@
     </script>
 </body>
 </html>
-
+ async function loadMessages
